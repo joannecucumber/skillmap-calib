@@ -142,13 +142,13 @@ function describe(a){
         <td>${cur<0?'未達':RANKS[cur]}</td>
         <td>${RANKS[needR]}</td>
         <td>${ok?'<span class="gate-ok">✓ 已達</span>':`<span class="gate-no">差 ${diff} 級</span>`}</td>
-        <td class="hint">${isGate?'必過格':'低標'}</td></tr>`;
+        <td class="hint">${isGate?'<b style="color:var(--navy)">主科</b>（必過格）':'副科（低標）'}</td></tr>`;
     }).join('');
     const nMiss=COMP.filter(c=>{const cur=rank(a.picks[c]);const needR=gateMap[c]!==undefined?rank(gateMap[c]):G.low;return cur<needR;}).length;
     gateTable=`<div style="margin-top:10px">
-      <b style="font-size:13px;color:var(--navy)">他要升${LVTXT[g.next]}，規則是：關鍵維度（必過格）要到指定子級、其餘至少到低標。對照他現在——${g.allOk?'<span class="gate-ok">已全數達成，具晉升條件</span>':`差 <span class="gate-no">${nMiss} 個維度</span>，各差多少看下表`}</b>
+      <b style="font-size:13px;color:var(--navy)">他要升${LVTXT[g.next]}——像考試分主科副科：<b>主科</b>＝那個職等每天在做的事，必須到指定等級、不能用別科高分拉平均；<b>副科</b>＝不能爛到扯後腿，到底線即可。對照他現在——${g.allOk?'<span class="gate-ok">已全數達成，具晉升條件</span>':`差 <span class="gate-no">${nMiss} 個維度</span>，各差多少看下表`}</b>
       <table style="margin-top:6px;font-size:12.5px"><tr><th>維度</th><th>現在</th><th>需要</th><th>差距</th><th>要求類型</th></tr>${rows}</table>
-      <p class="hint" style="margin:6px 0 0">必過格＝該職等的入場券，必須到指定子級；低標＝其他維度不能低於的底線。</p></div>`;
+      <p class="hint" style="margin:6px 0 0">為什麼這三科是主科？因為${LVTXT[g.next]}的日常工作就是它們——主科不到位，其他科再高也補不了。副科只要不拖累主科即可。</p></div>`;
   }
   return {lv,minR,title:TITLE[lv],lbl,gateTable,
     html:lines.map(l=>`<p style="margin:6px 0;line-height:1.8;font-size:13.5px">${l}</p>`).join('')};
@@ -394,8 +394,8 @@ function calib(){
     </div>`;
   });
   out+=`<div class="card" style="padding:14px 18px;font-size:13px;line-height:1.9">
-    <b style="color:var(--navy)">必過格 vs 低標，怎麼分？（三個測試）</b><br>
-    必過格＝定義該職等本質的維度（弱了就<b>不是</b>這個職等）；低標＝支撐運作的維度（弱了會痛、不會死，但痛有上限）。判斷用三個測試：<br>
+    <b style="color:var(--navy)">主科（必過格）vs 副科（低標），怎麼分？（三個測試）</b><br>
+    主科＝那個職等每天在做的事，必須到指定等級、不能用別科拉平均；副科＝不能爛到扯後腿，到底線即可。哪科算主科？用三個測試判斷：<br>
     ① <b>可補位性</b>：這維弱，能靠別人或制度補嗎？可補＝低標；不可補＝必過格。<br>
     ② <b>定義反推</b>：把這能力從職等的工作說明拿掉，職等還成立嗎？不成立＝必過格。<br>
     ③ <b>失敗模式</b>：不足時是立刻死（東西出不來）＝必過格，還是慢性痛（效率低但事情會成）＝低標。<br>

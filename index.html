@@ -116,13 +116,30 @@ function describe(a){
   if(maxR>minR)lines.push(`最強維度：${maxCols.join('、')}（${lbl(maxR)}），與最弱差 ${maxR-minR} 級${maxR-minR>=3?'——發展明顯不均衡，最弱維就是最該投資的地方':'，整體算均衡'}。`);
   else lines.push('六維同級，發展均衡。');
   const g=gateCheck(a,lv);
+  let gateTable='';
   if(g){
-    const missG=g.items.filter(x=>!x.ok).map(x=>x.label);
-    const miss=[...missG,...(g.lowMiss.length?[`${g.lowTxt}（缺 ${g.lowMiss.join('、')}）`]:[])];
-    lines.push(g.allOk?`<b class="gate-ok">晉升${LVTXT[g.next]}的必過格已全數達成 → 具晉升條件。</b>`
-      :`要升${LVTXT[g.next]}：補 <b class="gate-no">${miss.join('、')}</b> 即可，不用全面加強。`);
+    const G=GATES[g.next];
+    const gateMap={};G.gates.forEach(([c,rid])=>gateMap[c]=rid);
+    const rows=COMP.map(c=>{
+      const cur=rank(a.picks[c]);
+      const isGate=gateMap[c]!==undefined;
+      const needR=isGate?rank(gateMap[c]):G.low;
+      const ok=cur>=needR;
+      const diff=needR-cur;
+      return `<tr>
+        <td style="font-weight:700;white-space:nowrap">${c}</td>
+        <td>${cur<0?'未達':RANKS[cur]}</td>
+        <td>${RANKS[needR]}</td>
+        <td>${ok?'<span class="gate-ok">✓ 已達</span>':`<span class="gate-no">差 ${diff} 級</span>`}</td>
+        <td class="hint">${isGate?'必過格':'低標'}</td></tr>`;
+    }).join('');
+    const nMiss=COMP.filter(c=>{const cur=rank(a.picks[c]);const needR=gateMap[c]!==undefined?rank(gateMap[c]):G.low;return cur<needR;}).length;
+    gateTable=`<div style="margin-top:10px">
+      <b style="font-size:13px;color:var(--navy)">晉升${LVTXT[g.next]}檢核${g.allOk?'：<span class="gate-ok">全數達成 → 具晉升條件</span>':`：六維中 <b class="gate-no">${nMiss} 維</b> 要補`}</b>
+      <table style="margin-top:6px;font-size:12.5px"><tr><th>維度</th><th>現在</th><th>需要</th><th>差距</th><th>要求類型</th></tr>${rows}</table>
+      <p class="hint" style="margin:6px 0 0">必過格＝該職等的入場券，必須到指定子級；低標＝其他維度不能低於的底線。</p></div>`;
   }
-  return {lv,minR,title:TITLE[lv],lbl,
+  return {lv,minR,title:TITLE[lv],lbl,gateTable,
     html:lines.map(l=>`<p style="margin:6px 0;line-height:1.8;font-size:13.5px">${l}</p>`).join('')};
 }
 function latest(pid){return DB.assess.filter(a=>a.pid===pid).sort((a,b)=>(b.date||'').localeCompare(a.date||''))[0]||null;}
@@ -217,8 +234,8 @@ function rate(pid){
       </div>
       <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;padding:14px 24px 18px">
         <div>${radarSVG(vals,COMP)}</div>
-        <div style="flex:1;min-width:280px">${d.html}
-          <button class="btn pri sm" style="margin-top:8px" onclick="calib()">📊 去校準對照（跟直覺對答案）</button></div>
+        <div style="flex:1;min-width:280px">${d.html}${d.gateTable||''}
+          <button class="btn pri sm" style="margin-top:10px" onclick="calib()">📊 去校準對照（跟直覺對答案）</button></div>
       </div></div>`;
   }else{
     out+=`<div class="row" style="margin-top:14px">

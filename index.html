@@ -93,6 +93,36 @@ function fmtRung(t){
   if(q)out+=`<div class="quant">量化｜${esc(q).replace(/(\d+(?:\.\d+)?\s*(?:%|倍|hr|小時|分鐘)|\d+\s*[→\-–]\s*\d+\s*%?)/g,'<b>$1</b>')}</div>`;
   return out;
 }
+function radarSVG(vals,labels,size){
+  size=size||260;const cx=size/2,cy=size/2,R=size/2-40;const n=vals.length;
+  const pt=(i,r)=>{const a=-Math.PI/2+i*2*Math.PI/n;return [cx+r*Math.cos(a),cy+r*Math.sin(a)];};
+  let grid='';[0.25,0.5,0.75,1].forEach(f=>{grid+=`<polygon points="${Array.from({length:n},(_,i)=>pt(i,R*f).join(',')).join(' ')}" fill="none" stroke="#e4e7ee"/>`;});
+  let axes='';for(let i=0;i<n;i++){const [x,y]=pt(i,R);axes+=`<line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e4e7ee"/>`;}
+  const poly=vals.map((v,i)=>pt(i,R*v).join(',')).join(' ');
+  let lbl='';labels.forEach((t,i)=>{const [x,y]=pt(i,R+22);lbl+=`<text x="${x}" y="${y}" font-size="11" font-weight="600" fill="#5a6b82" text-anchor="middle" dominant-baseline="middle">${t}</text>`;});
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${grid}${axes}
+    <polygon points="${poly}" fill="rgba(47,109,176,.16)" stroke="#2f6db0" stroke-width="2"/>
+    ${vals.map((v,i)=>{const [x,y]=pt(i,R*v);return `<circle cx="${x}" cy="${y}" r="3.5" fill="#2f6db0"/>`}).join('')}${lbl}</svg>`;
+}
+function describe(a){
+  const rs=COMP.map(c=>rank(a.picks[c]));
+  const minR=Math.min(...rs),maxR=Math.max(...rs);
+  const minCols=COMP.filter((c,i)=>rs[i]===minR),maxCols=COMP.filter((c,i)=>rs[i]===maxR);
+  const lv=LV_OF(minR);
+  const lbl=r=>r<0?'未達職等一':RANKS[r];
+  let lines=[];
+  lines.push(`<b>職級落點：${LVTXT[lv]}</b>——六個維度取最低：他的 ${minCols.join('、')} 在 <b>${lbl(minR)}</b>，這一維決定落點。`);
+  if(maxR>minR)lines.push(`最強維度是 ${maxCols.join('、')}（${lbl(maxR)}），與最弱差 <b>${maxR-minR} 級</b>${maxR-minR>=3?'——發展明顯不均衡，最弱維就是最該投資的地方':'，整體算均衡'}。`);
+  else lines.push('六維同級，發展均衡。');
+  const g=gateCheck(a,lv);
+  if(g){
+    const missG=g.items.filter(x=>!x.ok).map(x=>x.label);
+    const miss=[...missG,...(g.lowMiss.length?[`${g.lowTxt}（缺 ${g.lowMiss.join('、')}）`]:[])];
+    lines.push(g.allOk?`<b class="gate-ok">晉升${LVTXT[g.next]}的必過格已全數達成 → 具晉升條件。</b>`
+      :`距離${LVTXT[g.next]}：還缺 <b class="gate-no">${miss.join('、')}</b>——補這幾格，不用全面加強。`);
+  }
+  return lines.map(l=>`<p style="margin:6px 0;line-height:1.8;font-size:13.5px">${l}</p>`).join('');
+}
 function latest(pid){return DB.assess.filter(a=>a.pid===pid).sort((a,b)=>(b.date||'').localeCompare(a.date||''))[0]||null;}
 function ranksOf(a){return COMP.map(c=>a.picks[c]===undefined?null:rank(a.picks[c]));}
 function bucketLv(a){const rs=ranksOf(a);if(rs.some(r=>r===null))return null;const m=Math.min(...rs);return {lv:LV_OF(m),minR:m,minCols:COMP.filter((c,i)=>rs[i]===m)};}
@@ -126,7 +156,7 @@ function home(){
     <button class="btn" style="margin-left:auto" onclick="calib()" ${done.length?'':'disabled'}>📊 校準對照（已評完 ${done.length} 人）</button>
   </div>
   <div class="card" style="padding:2px 16px">
-    <table><tr><th>成員</th><th>你的直覺</th><th>算法落點（木桶）</th><th></th></tr>
+    <table><tr><th>成員</th><th>你的直覺</th><th>算法落點（最低維度）</th><th></th></tr>
     ${rows||'<tr><td colspan="4" class="hint" style="padding:22px;text-align:center">從你最有把握的人開始——評 3 到 5 個，校準才有意義</td></tr>'}</table>
   </div>`;
 }
@@ -173,10 +203,19 @@ function rate(pid){
     </div>`;
   });
   const filled=COMP.filter(c=>a.picks[c]!==undefined).length;
-  out+=`<div class="row" style="margin-top:14px">
-    <span class="hint">已評 ${filled}/6 維</span>
-    <button class="btn pri" style="margin-left:auto" onclick="${filled===6?`calib()`:`toastMsg()`}">${filled===6?'✓ 評完了，去校準對照':'六維評完才能校準'}</button>
-  </div>`;
+  if(filled===6){
+    const vals=COMP.map(c=>(rank(a.picks[c])+1)/10);
+    out+=`<div class="card" style="padding:18px 22px;margin-top:14px">
+      <b style="font-size:14.5px;color:var(--navy)">綜合結果</b>
+      <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin-top:6px">
+        <div>${radarSVG(vals,COMP)}</div>
+        <div style="flex:1;min-width:280px">${describe(a)}
+          <button class="btn pri sm" style="margin-top:8px" onclick="calib()">📊 去校準對照（跟直覺對答案）</button></div>
+      </div></div>`;
+  }else{
+    out+=`<div class="row" style="margin-top:14px">
+      <span class="hint">已評 ${filled}/6 維——六維評完會出現雷達圖與綜合描述</span></div>`;
+  }
   document.getElementById('stage').innerHTML=out;
 }
 function peek(comp,ri){
@@ -207,30 +246,30 @@ function calib(){
     return {p,a,b,av,g,gutOkB,gutOkA};
   });
   let out=`<h2 style="font-size:16px;color:var(--navy);margin:0 0 4px">校準對照：你的直覺 vs 三種算法</h2>
-  <p class="hint" style="margin:0 0 12px">${gutN?`木桶法貼合直覺 <b class="match">${bMatch}/${gutN}</b>　·　平均法貼合 <b>${aMatch}/${gutN}</b>　——不一致的人是修規則的線索，點列展開看原因。`:'（填了直覺職級才能對答案）'}</p>
+  <p class="hint" style="margin:0 0 12px">${gutN?`「最低維度法」貼合直覺 <b class="match">${bMatch}/${gutN}</b>　·　平均法貼合 <b>${aMatch}/${gutN}</b>　——不一致的人是修規則的線索，點列展開看原因。`:'（填了直覺職級才能對答案）'}</p>
   <div class="card" style="padding:2px 16px"><table>
-  <tr><th>成員</th><th>你的直覺</th><th>木桶落點<br><span style="font-weight:400">（最低維＝落點）</span></th><th>平均落點<br><span style="font-weight:400">（舊加總邏輯）</span></th><th>晉升檢核（必過格）</th></tr>`;
+  <tr><th>成員</th><th>你的直覺</th><th>最低維度落點<br><span style="font-weight:400">（六維中最低的一維＝落點）</span></th><th>平均落點<br><span style="font-weight:400">（舊加總邏輯）</span></th><th>晉升檢核（必過格）</th></tr>`;
   rows.forEach(({p,a,b,av,g,gutOkB,gutOkA},i)=>{
     const gateTxt=g?g.items.map(x=>`<span class="${x.ok?'gate-ok':'gate-no'}">${x.ok?'✓':'✗'}${esc(x.label)}</span>`).join(' ')+(g.lowMiss.length?` <span class="gate-no">✗${g.lowTxt}(缺${g.lowMiss.join('、')})</span>`:` <span class="gate-ok">✓${g.lowTxt}</span>`)+(g.allOk?' <b class="match">→可晉升</b>':''):'—';
     out+=`<tr class="click" onclick="document.getElementById('det-${i}').style.display=document.getElementById('det-${i}').style.display==='none'?'table-row':'none'">
       <td><b>${esc(p.name)}</b></td>
       <td>${a.gut?`<span class="pill">${esc(a.gut)}</span>`:'—'}</td>
-      <td><span class="pill ${gutOkB===null?'':(gutOkB?'g':'r')}">${LVTXT[b.lv]}</span> <span class="hint">卡在${b.minCols.join('、')}</span></td>
+      <td><span class="pill ${gutOkB===null?'':(gutOkB?'g':'r')}">${LVTXT[b.lv]}</span> <span class="hint">受限於 ${b.minCols.join('、')}</span></td>
       <td><span class="pill ${gutOkA===null?'':(gutOkA?'g':'r')}">${LVTXT[av.lv]}</span></td>
       <td style="font-size:11.5px;line-height:1.9">${gateTxt}</td></tr>
     <tr id="det-${i}" style="display:none"><td colspan="5" style="background:#fafbfc">
       <div class="bars">${COMP.map(c=>{const r=rank(a.picks[c]);const h=Math.max(6,(r+1)/10*100);const isMin=b.minCols.includes(c);
         return `<div class="barc"><span class="barr">${a.picks[c]==='未達'?'✗':esc(a.picks[c])}</span><div class="barv ${isMin?'min':''}" style="height:${h}%"></div><span class="barl">${c}</span></div>`;}).join('')}</div>
-      <p class="hint" style="margin:4px 0 8px">橘色＝木桶（決定落點的維度）。若你直覺他更高：可能是這維評太嚴、或木桶規則對此維不該一刀切。
+      <p class="hint" style="margin:4px 0 8px">橘色＝最低維度（決定落點的那一維）。若你直覺他更高：可能是這維評太嚴、或木桶規則對此維不該一刀切。
       <button class="btn sm" onclick="event.stopPropagation();rate('${p.id}')">改評分</button></p>
     </td></tr>`;
   });
   out+='</table></div>';
   out+=`<div class="card" style="padding:14px 18px;font-size:13px;line-height:1.9">
     <b style="color:var(--navy)">怎麼讀這張表</b><br>
-    · <b>木桶＝直覺</b> 多 → 門檻制成立，照 v2 走。<br>
-    · <b>平均＝直覺</b> 多 → 你實際在用整體印象評人，門檻制會比你嚴——要嘛接受它更嚴（拉標準），要嘛放寬「木桶」為「次低維」。<br>
-    · 某維<b>常常當木桶</b>（例如大家都卡 AI 應用）→ 是團隊真實缺口，或該維標準訂太高——這就是要跟夥伴討論的格子。</div>`;
+    · <b>最低維度法＝直覺</b> 較多 → 「落點看最弱一維」成立，照 v2 走。<br>
+    · <b>平均＝直覺</b> 多 → 你實際在用整體印象評人，門檻制會比你嚴——要嘛接受它更嚴（拉標準），要嘛放寬為「次低維度」。<br>
+    · 某一維<b>常常是大家的最低維</b>（例如大家都卡 AI 應用）→ 是團隊真實缺口，或該維標準訂太高——這就是要跟夥伴討論的格子。</div>`;
   document.getElementById('stage').innerHTML=out;
 }
 home();

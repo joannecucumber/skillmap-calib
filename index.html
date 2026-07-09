@@ -75,6 +75,7 @@ const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&g
 const uid=()=>Math.random().toString(36).slice(2,9);
 let DB;try{DB=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){DB={};}
 DB.people=DB.people||[];DB.assess=DB.assess||[];
+['Jessie','Ning','Harry','Una','Janet'].forEach(n=>{if(!DB.people.find(p=>p.name===n))DB.people.push({id:uid(),name:n});});
 const save=()=>localStorage.setItem(KEY,JSON.stringify(DB));
 
 const RANKS=['職等一','2-1','2-2','2-3','3-1','3-2','3-3','4-1','4-2','4-3'];
@@ -257,51 +258,82 @@ function setPick(aid,comp,val){
 function toastMsg(){alert('六個維度都選了，校準才有意義。');}
 
 /* ===== 校準對照 ===== */
+function dimList(a){return COMP.map(c=>`${c} ${a.picks[c]==='未達'?'未達':esc(a.picks[c])}`).join('、');}
+function personNarrative(p,a){
+  const b=bucketLv(a),av=avgLv(a);
+  const sysLv=LVTXT[b.lv],avgL=LVTXT[av.lv];
+  const gut=a.gut||'';
+  const agree=gut?gut===sysLv:null;
+  const gutR={'職等一':1,'職等二':2,'職等三':3,'職等四':4}[gut]||0;
+  const minStr=`${b.minCols.join('、')}（${b.minR<0?'未達':RANKS[b.minR]}）`;
+  let paras=[];
+  paras.push(`<b>你怎麼評他的：</b>${dimList(a)}。六個維度裡最弱的是 <b>${minStr}</b>。`);
+  paras.push(`<b>系統怎麼判：</b>規則是「職級看最弱的一維」——不管其他維度多高，最弱那維到哪裡，人就落在哪裡。所以系統把 ${esc(p.name)} 判為 <b>${sysLv}</b>${b.minR>0?`（子級 ${RANKS[b.minR]}）`:''}。作為對照，「平均法」（把六維平均，接近舊版加總的邏輯）會把他放在 <b>${avgL}</b>。`);
+  if(agree===null){
+    paras.push(`<b class="gate-no">你還沒填直覺職級</b>——回到他的評定頁，先憑感覺選一個。沒有直覺當答案卷，這筆就無法核對。`);
+  }else if(agree){
+    paras.push(`<b class="gate-ok">✓ 直覺與系統一致（都是 ${sysLv}）。</b>這筆是好樣本：代表對 ${esc(p.name)} 這種輪廓的人，「看最弱一維」的規則跟你的判斷是同一套。這種一致的人越多，v2 的算法越可信。`);
+    const g=gateCheck(a,b.lv);
+    if(g&&!g.allOk){const miss=g.items.filter(x=>!x.ok).map(x=>x.label).concat(g.lowMiss.length?[`${g.lowMiss.join('、')} 要到低標`]:[]);
+      paras.push(`順帶：他要升 ${LVTXT[g.next]} 還缺 ${miss.join('、')}——這可以直接當他的成長目標講。`);}
+    else if(g&&g.allOk)paras.push(`而且他升 ${LVTXT[g.next]} 的必過格已全數達成——如果你也覺得他該升了，這筆評定就是佐證。`);
+  }else if(gutR>b.lv){
+    paras.push(`<b class="gate-no">✗ 不一致：你的直覺是 ${gut}，系統判 ${sysLv}（低了 ${gutR-b.lv} 級）。</b>系統把他壓低的唯一原因，就是 ${minStr} 這一維。`);
+    paras.push(`<b>兩種可能，你挑一個：</b><br>
+      ① <b>你評得太嚴</b>——回去看 ${b.minCols.join('、')} 下一級的標準原文，想一件他實際做過的事：如果其實做得到，改評分，落點就會跟上你的直覺。<br>
+      ② <b>你的直覺是「整體印象」</b>——他整體很像 ${gut}，但那一維真的還沒到。這時系統沒有錯，它只是比你嚴：它在說「${gut} 的位子給他，${b.minCols.join('、')} 這一維會漏水」。${av.lv===gutR?`（注意：平均法判他 ${avgL}，跟你的直覺一致——這強烈暗示你平常就是用整體印象在評人。這不是錯，但要決定：職級要不要允許「用強項蓋掉弱項」？）`:''}`);
+    paras.push(`<b>建議動作：</b>先做 ①（重看那一維的標準）。如果重看後你仍堅持直覺，而且<b>好幾個人都卡在同一維</b>，那就不是評分問題，是規則問題——把「${b.minCols.join('、')}」這維帶去跟 Monica 討論：標準訂太高，或它不該當一票否決。`);
+  }else{
+    paras.push(`<b class="gate-no">✗ 不一致：你的直覺是 ${gut}，系統判 ${sysLv}（比你的直覺高）。</b>意思是：按你給的六維評分，他每一維都達到 ${sysLv} 的門檻了，但你心裡覺得他還不到。`);
+    paras.push(`<b>兩種可能：</b><br>① <b>你各維評鬆了</b>——尤其回看你給最高的那幾維，是「穩定做到」還是「做到過一次」？規則要求的是穩定表現。<br>② <b>你的直覺過時或摻了別的東西</b>——他可能真的成長到位了，只是你的印象停在半年前；或你直覺裡混入了年資、態度這類地圖上沒有的維度。`);
+    paras.push(`<b>建議動作：</b>逐維回想他最近一次的實際案例再對標準。如果案例撐得住評分，該更新的是你的直覺——這其實是評定系統最有價值的時刻。`);
+  }
+  return paras.map(t=>`<p style="margin:8px 0;line-height:1.9;font-size:13.5px">${t}</p>`).join('');
+}
 function calib(){
   document.getElementById('crumb').innerHTML=`<button class="btn sm" onclick="home()" style="background:transparent;color:#cfd8e6;border-color:rgba(255,255,255,.3)">← 名單</button>`;
   const done=DB.people.map(p=>({p,a:latest(p.id)})).filter(x=>x.a&&bucketLv(x.a));
-  if(!done.length){document.getElementById('stage').innerHTML='<p class="hint">還沒有評完的人。</p>';return;}
+  if(!done.length){document.getElementById('stage').innerHTML='<p class="hint">還沒有評完六維的人。先回名單挑一位開始。</p>';return;}
   let bMatch=0,aMatch=0,gutN=0;
-  const rows=done.map(({p,a})=>{
-    const b=bucketLv(a),av=avgLv(a);
-    const g=gateCheck(a,b.lv);
-    const gutOkB=a.gut?(a.gut===LVTXT[b.lv]):null;
-    const gutOkA=a.gut?(a.gut===LVTXT[av.lv]):null;
-    if(a.gut){gutN++;if(gutOkB)bMatch++;if(gutOkA)aMatch++;}
-    return {p,a,b,av,g,gutOkB,gutOkA};
+  done.forEach(({a})=>{const b=bucketLv(a),av=avgLv(a);
+    if(a.gut){gutN++;if(a.gut===LVTXT[b.lv])bMatch++;if(a.gut===LVTXT[av.lv])aMatch++;}});
+  // 總結
+  let verdict='';
+  if(!gutN)verdict='目前沒有人填直覺職級，無法核對——回每個人的評定頁補上。';
+  else{
+    verdict=`已完成 ${done.length} 人、其中 ${gutN} 人有直覺可核對。<b>「看最弱一維」貼合你的直覺 ${bMatch}/${gutN}</b>，「平均法」貼合 ${aMatch}/${gutN}。`;
+    if(bMatch===gutN)verdict+='<br><b class="gate-ok">全數一致：v2 的門檻制跟你的判斷是同一套，可以放心推進。</b>';
+    else if(bMatch>=aMatch)verdict+=`<br>門檻制的貼合度不低於平均法：方向對，重點看下面 ${gutN-bMatch} 個不一致的人——他們是修規則（或修評分）的線索。`;
+    else verdict+=`<br><b class="gate-no">平均法比門檻制更貼你的直覺</b>——代表你實際是用「整體印象」在評人。你要做一個決定：接受門檻制比你嚴（拉高標準），或是把規則放寬（例如改看「次低維」）。這是要跟 Monica 對齊的核心問題。`;
+  }
+  let out=`<h2 style="font-size:16px;color:var(--navy);margin:0 0 4px">校準對照：你的直覺 vs 系統</h2>
+  <div class="card" style="padding:14px 18px;font-size:13.5px;line-height:1.9">${verdict}</div>`;
+  // 逐人長文
+  done.forEach(({p,a},i)=>{
+    const b=bucketLv(a);
+    const agree=a.gut?(a.gut===LVTXT[b.lv]):null;
+    const badge=agree===null?'<span class="pill y">缺直覺</span>':agree?'<span class="pill g">✓ 一致</span>':'<span class="pill r">✗ 不一致</span>';
+    out+=`<div class="card" style="padding:16px 20px">
+      <div class="row" style="margin-bottom:4px">
+        <b style="font-size:16px">${esc(p.name)}</b>
+        <span class="hint">直覺</span><span class="pill">${a.gut?esc(a.gut):'—'}</span>
+        <span class="hint">系統</span><span class="pill">${LVTXT[b.lv]}</span>
+        ${badge}
+        <span style="margin-left:auto"><button class="btn sm" onclick="rate('${p.id}')">改評分</button></span>
+      </div>
+      ${personNarrative(p,a)}
+      <div class="bars">${COMP.map(c=>{const r=rank(a.picks[c]);const hgt=Math.max(6,(r+1)/10*100);const isMin=b.minCols.includes(c);
+        return `<div class="barc"><span class="barr">${a.picks[c]==='未達'?'✗':esc(a.picks[c])}</span><div class="barv ${isMin?'min':''}" style="height:${hgt}%"></div><span class="barl">${c}</span></div>`;}).join('')}</div>
+      <p class="hint" style="margin:2px 0 0">橘色＝最低維度（決定落點的那一維）。</p>
+    </div>`;
   });
-  let out=`<h2 style="font-size:16px;color:var(--navy);margin:0 0 4px">校準對照：你的直覺 vs 三種算法</h2>
-  <p class="hint" style="margin:0 0 12px">${gutN?`「最低維度法」貼合直覺 <b class="match">${bMatch}/${gutN}</b>　·　平均法貼合 <b>${aMatch}/${gutN}</b>　——不一致的人是修規則的線索，點列展開看原因。`:'（填了直覺職級才能對答案）'}</p>
-  <div class="card" style="padding:2px 16px"><table>
-  <tr><th>成員</th><th>你的直覺</th><th>最低維度落點<br><span style="font-weight:400">（六維中最低的一維＝落點）</span></th><th>平均落點<br><span style="font-weight:400">（舊加總邏輯）</span></th><th>晉升檢核（必過格）</th></tr>`;
-  rows.forEach(({p,a,b,av,g,gutOkB,gutOkA},i)=>{
-    const gateTxt=g?g.items.map(x=>`<span class="${x.ok?'gate-ok':'gate-no'}">${x.ok?'✓':'✗'}${esc(x.label)}</span>`).join(' ')+(g.lowMiss.length?` <span class="gate-no">✗${g.lowTxt}(缺${g.lowMiss.join('、')})</span>`:` <span class="gate-ok">✓${g.lowTxt}</span>`)+(g.allOk?' <b class="match">→可晉升</b>':''):'—';
-    out+=`<tr class="click" onclick="document.getElementById('det-${i}').style.display=document.getElementById('det-${i}').style.display==='none'?'table-row':'none'">
-      <td><b>${esc(p.name)}</b></td>
-      <td>${a.gut?`<span class="pill">${esc(a.gut)}</span>`:'—'}</td>
-      <td><span class="pill ${gutOkB===null?'':(gutOkB?'g':'r')}">${LVTXT[b.lv]}</span> <span class="hint">受限於 ${b.minCols.join('、')}</span></td>
-      <td><span class="pill ${gutOkA===null?'':(gutOkA?'g':'r')}">${LVTXT[av.lv]}</span></td>
-      <td style="font-size:11.5px;line-height:1.9">${gateTxt}</td></tr>
-    <tr id="det-${i}" style="display:none"><td colspan="5" style="background:#fafbfc">
-      <div class="bars">${COMP.map(c=>{const r=rank(a.picks[c]);const h=Math.max(6,(r+1)/10*100);const isMin=b.minCols.includes(c);
-        return `<div class="barc"><span class="barr">${a.picks[c]==='未達'?'✗':esc(a.picks[c])}</span><div class="barv ${isMin?'min':''}" style="height:${h}%"></div><span class="barl">${c}</span></div>`;}).join('')}</div>
-      <p class="hint" style="margin:4px 0 8px">橘色＝最低維度（決定落點的那一維）。若你直覺他更高：可能是這維評太嚴、或木桶規則對此維不該一刀切。
-      <button class="btn sm" onclick="event.stopPropagation();rate('${p.id}')">改評分</button></p>
-    </td></tr>`;
-  });
-  out+='</table></div>';
   out+=`<div class="card" style="padding:14px 18px;font-size:13px;line-height:1.9">
-    <b style="color:var(--navy)">怎麼讀這張表</b><br>
-    · <b>最低維度法＝直覺</b> 較多 → 「落點看最弱一維」成立，照 v2 走。<br>
-    · <b>平均＝直覺</b> 多 → 你實際在用整體印象評人，門檻制會比你嚴——要嘛接受它更嚴（拉標準），要嘛放寬為「次低維度」。<br>
-    · 某一維<b>常常是大家的最低維</b>（例如大家都卡 AI 應用）→ 是團隊真實缺口，或該維標準訂太高——這就是要跟夥伴討論的格子。</div>
-  <div class="card" style="padding:14px 18px;font-size:13px;line-height:1.9">
     <b style="color:var(--navy)">必過格 vs 低標，怎麼分？（三個測試）</b><br>
     必過格＝定義該職等本質的維度（弱了就<b>不是</b>這個職等）；低標＝支撐運作的維度（弱了會痛、不會死，但痛有上限）。判斷用三個測試：<br>
-    ① <b>可補位性</b>：這維弱，能靠別人或制度補嗎？可補＝低標（管理弱可靠流程撐）；不可補＝必過格（閉環沒人能替他跑）。<br>
-    ② <b>定義反推</b>：把這能力從職等的工作說明拿掉，職等還成立嗎？不成立＝必過格（職等四拿掉「影響 BO」就只是強資深）。<br>
+    ① <b>可補位性</b>：這維弱，能靠別人或制度補嗎？可補＝低標；不可補＝必過格。<br>
+    ② <b>定義反推</b>：把這能力從職等的工作說明拿掉，職等還成立嗎？不成立＝必過格。<br>
     ③ <b>失敗模式</b>：不足時是立刻死（東西出不來）＝必過格，還是慢性痛（效率低但事情會成）＝低標。<br>
-    <span class="hint">注意：主配角每個職等重新分配（溝通在職等二三是低標、職等四升格必過格）。目前的分法是草案——若校準發現「某類人總被低估」，就是分錯的訊號，拿去討論改。</span></div>`;
+    <span class="hint">主配角每個職等重新分配（溝通在職等二三是低標、職等四升格必過格）。目前分法是草案——若校準發現「某類人總被低估」，就是分錯的訊號。</span></div>`;
   document.getElementById('stage').innerHTML=out;
 }
 home();

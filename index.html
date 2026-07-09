@@ -84,7 +84,8 @@ const LV_OF=r=>r<0?0:(r===0?1:(r<=3?2:(r<=6?3:4)));
 const LVTXT=['未達','職等一','職等二','職等三','職等四'];
 const GATES={2:{gates:[['設計專業','2-1'],['AI 應用','2-1']],low:0,lowTxt:'職等一全項'},
   3:{gates:[['設計專業','2-3'],['AI 應用','2-3']],low:2,lowTxt:'其餘 ≥ 2-2'},
-  4:{gates:[['設計專業','3-3'],['AI 應用','3-3'],['溝通','3-3']],low:5,lowTxt:'其餘 ≥ 3-2'}};
+  4:{gates:[['設計專業','3-3'],['AI 應用','3-3']],low:5,lowTxt:'其餘 ≥ 3-2'}};
+const DIMGROUP={'設計專業':'專業職能','AI 應用':'專業職能','溝通':'核心職能','團隊合作':'核心職能','管理':'管理職能','當責':'管理職能'};
 
 function fmtRung(t){
   t=(t||'').trim();const i=t.search(/量化[:：]?/);
@@ -142,13 +143,13 @@ function describe(a){
         <td>${cur<0?'未達':RANKS[cur]}</td>
         <td>${RANKS[needR]}</td>
         <td>${ok?'<span class="gate-ok">✓ 已達</span>':`<span class="gate-no">差 ${diff} 級</span>`}</td>
-        <td class="hint">${isGate?'<b style="color:var(--navy)">主科</b>（必過格）':'副科（低標）'}</td></tr>`;
+        <td class="hint">${isGate?`<b style="color:var(--navy)">${DIMGROUP[c]}</b>（必過格）`:`${DIMGROUP[c]}（低標）`}</td></tr>`;
     }).join('');
     const nMiss=COMP.filter(c=>{const cur=rank(a.picks[c]);const needR=gateMap[c]!==undefined?rank(gateMap[c]):G.low;return cur<needR;}).length;
     gateTable=`<div style="margin-top:10px">
-      <b style="font-size:13px;color:var(--navy)">他要升${LVTXT[g.next]}——像考試分主科副科：<b>主科</b>＝那個職等每天在做的事，必須到指定等級、不能用別科高分拉平均；<b>副科</b>＝不能爛到扯後腿，到底線即可。對照他現在——${g.allOk?'<span class="gate-ok">已全數達成，具晉升條件</span>':`差 <span class="gate-no">${nMiss} 個維度</span>，各差多少看下表`}</b>
+      <b style="font-size:13px;color:var(--navy)">他要升${LVTXT[g.next]}——規則用地圖本身的分類：<b>專業職能</b>（設計專業、AI 應用）＝定義這個職等的能力，必須到指定子級、不能用其他職能拉平均；<b>核心與管理職能</b>＝支撐運作，到底線即可。對照他現在——${g.allOk?'<span class="gate-ok">已全數達成，具晉升條件</span>':`差 <span class="gate-no">${nMiss} 個維度</span>，各差多少看下表`}</b>
       <table style="margin-top:6px;font-size:12.5px"><tr><th>維度</th><th>現在</th><th>需要</th><th>差距</th><th>要求類型</th></tr>${rows}</table>
-      <p class="hint" style="margin:6px 0 0">為什麼這三科是主科？因為${LVTXT[g.next]}的日常工作就是它們——主科不到位，其他科再高也補不了。副科只要不拖累主科即可。</p></div>`;
+      <p class="hint" style="margin:6px 0 0">為什麼專業職能是必過格？因為它定義「這個職等做什麼」——不到位，核心/管理職能再高也補不了；後者只要不拖後腿即可。</p></div>`;
   }
   return {lv,minR,title:TITLE[lv],lbl,gateTable,
     html:lines.map(l=>`<p style="margin:6px 0;line-height:1.8;font-size:13.5px">${l}</p>`).join('')};
@@ -394,8 +395,8 @@ function calib(){
     </div>`;
   });
   out+=`<div class="card" style="padding:14px 18px;font-size:13px;line-height:1.9">
-    <b style="color:var(--navy)">主科（必過格）vs 副科（低標），怎麼分？（三個測試）</b><br>
-    主科＝那個職等每天在做的事，必須到指定等級、不能用別科拉平均；副科＝不能爛到扯後腿，到底線即可。哪科算主科？用三個測試判斷：<br>
+    <b style="color:var(--navy)">專業職能（必過格）vs 核心・管理職能（低標）</b><br>
+    專業職能（設計專業＋AI 應用）＝定義職等本質，必須到指定子級、不能用其他職能拉平均；核心與管理職能＝支撐運作，到底線即可。為什麼這樣分？三個測試：<br>
     ① <b>可補位性</b>：這維弱，能靠別人或制度補嗎？可補＝低標；不可補＝必過格。<br>
     ② <b>定義反推</b>：把這能力從職等的工作說明拿掉，職等還成立嗎？不成立＝必過格。<br>
     ③ <b>失敗模式</b>：不足時是立刻死（東西出不來）＝必過格，還是慢性痛（效率低但事情會成）＝低標。<br>

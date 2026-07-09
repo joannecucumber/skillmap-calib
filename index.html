@@ -113,9 +113,19 @@ function describe(a){
   const lbl=r=>r<0?'未達職等一':RANKS[r];
   const TITLE=['—','初階設計師','中階設計師','資深設計師','主任設計師'];
   let lines=[];
-  lines.push(`為什麼：職級看六維中<b>最弱的一維</b>。他最弱的是 ${minCols.join('、')}（${lbl(minR)}），所以落在${LVTXT[lv]}。`);
-  if(maxR>minR)lines.push(`最強維度：${maxCols.join('、')}（${lbl(maxR)}），與最弱差 ${maxR-minR} 級${maxR-minR>=3?'——發展明顯不均衡，最弱維就是最該投資的地方':'，整體算均衡'}。`);
-  else lines.push('六維同級，發展均衡。');
+  const lvOfDim=rs.map(r=>LV_OF(r));
+  const minLvAll=Math.min(...lvOfDim),maxLvAll=Math.max(...lvOfDim);
+  if(minLvAll===maxLvAll){
+    // 全部同職等：講「紮實」＋內部位置
+    const grp={};COMP.forEach((c,i)=>{const k=lbl(rs[i]);(grp[k]=grp[k]||[]).push(c);});
+    const grpTxt=Object.keys(grp).sort((a,b)=>rank(b)-rank(a)).map(k=>`${grp[k].join('、')}在 ${k}`).join('；');
+    lines.push(`六個維度<b>全部落在${LVTXT[lv]}的範圍內</b>——他是紮實的${LVTXT[lv]}，沒有哪一面掉出去。細看位置：${grpTxt}。內部子級取最低＝<b>${lbl(minR)}</b>。`);
+  }else{
+    // 跨職等：講「誰沒跟上」
+    const hiCols=COMP.filter((c,i)=>lvOfDim[i]>minLvAll);
+    const loCols=COMP.filter((c,i)=>lvOfDim[i]===minLvAll);
+    lines.push(`他的能力<b>橫跨兩個職等</b>：${hiCols.join('、')} 已經到${LVTXT[maxLvAll]}的水準，但 ${loCols.map((c,i)=>c).join('、')} 還在${LVTXT[minLvAll]}。職級以最低的算——因為一個位子的六個面向都要撐得住——所以判<b>${LVTXT[lv]}</b>。還沒跟上的 ${loCols.join('、')}，就是他升${LVTXT[Math.min(minLvAll+1,4)]}最具體的關卡。`);
+  }
   const g=gateCheck(a,lv);
   let gateTable='';
   if(g){
@@ -136,7 +146,7 @@ function describe(a){
     }).join('');
     const nMiss=COMP.filter(c=>{const cur=rank(a.picks[c]);const needR=gateMap[c]!==undefined?rank(gateMap[c]):G.low;return cur<needR;}).length;
     gateTable=`<div style="margin-top:10px">
-      <b style="font-size:13px;color:var(--navy)">晉升${LVTXT[g.next]}檢核${g.allOk?'：<span class="gate-ok">全數達成 → 具晉升條件</span>':`：六維中 <b class="gate-no">${nMiss} 維</b> 要補`}</b>
+      <b style="font-size:13px;color:var(--navy)">他要升${LVTXT[g.next]}，規則是：關鍵維度（必過格）要到指定子級、其餘至少到低標。對照他現在——${g.allOk?'<span class="gate-ok">已全數達成，具晉升條件</span>':`差 <span class="gate-no">${nMiss} 個維度</span>，各差多少看下表`}</b>
       <table style="margin-top:6px;font-size:12.5px"><tr><th>維度</th><th>現在</th><th>需要</th><th>差距</th><th>要求類型</th></tr>${rows}</table>
       <p class="hint" style="margin:6px 0 0">必過格＝該職等的入場券，必須到指定子級；低標＝其他維度不能低於的底線。</p></div>`;
   }

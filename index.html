@@ -175,29 +175,41 @@ function home(){
       <td>${b?`<span class="pill ${a.gut?(a.gut===LVTXT[b.lv]?'g':'r'):''}">${LVTXT[b.lv]}</span>`:(a?`<span class="pill y">未評完</span>`:'<span class="hint">未評</span>')}</td>
       <td onclick="event.stopPropagation()"><button class="btn ghost sm" onclick="delPerson('${p.id}')">刪</button></td></tr>`;}).join('');
   document.getElementById('stage').innerHTML=`
-  <div class="concept">
-    <div class="c"><span class="n">STEP 1</span><b>先評你最了解的人</b>每個維度直接點「他在哪一級」，點級距可看該級的標準原文。同時記下你的直覺職級。</div>
-    <div class="c"><span class="n">STEP 2</span><b>評 3–5 人後看校準</b>系統把「你的直覺」跟三種算法（木桶／平均／必過格）的落點並排，看哪種最貼現況。</div>
-    <div class="c"><span class="n">STEP 3</span><b>反推規則</b>不一致的人就是線索：是木桶太嚴？門檻放錯格？據此修計算邏輯，而不是先信算法。</div>
-  </div>
   <div class="row" style="margin-bottom:12px">
     <input id="np" list="nl" placeholder="輸入你最了解的人" style="width:220px">
     <datalist id="nl">${NAMES.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
-    <button class="btn pri" onclick="addPerson()">＋ 開始評定</button>
+    <button class="btn pri" onclick="addPerson()">＋ 新增成員</button>
     <button class="btn" style="margin-left:auto" onclick="calib()" ${done.length?'':'disabled'}>📊 校準對照（已評完 ${done.length} 人）</button>
   </div>
-  <div class="card" style="padding:2px 16px">
+  <div class="card" style="padding:2px 16px;margin-bottom:16px">
     <table><tr><th>成員</th><th>你的直覺</th><th>算法落點（最低維度）</th><th></th></tr>
     ${rows||'<tr><td colspan="4" class="hint" style="padding:22px;text-align:center">從你最有把握的人開始——評 3 到 5 個，校準才有意義</td></tr>'}</table>
+  </div>
+  <div class="card" style="padding:18px 22px">
+    <b style="font-size:14.5px;color:var(--navy)">規則說明——整套只有四件事</b>
+    <div class="concept" style="margin-top:12px">
+      <div class="c"><span class="n">怎麼評一個維度</span><b>爬格子</b>由低往高，每一格問兩題：「舉得出具體案例嗎？」「是常態、不是只做過一次嗎？」兩題都是→往上爬；有一題否→停，<b>上一格＝他的分數</b>。「可以做到」不算，做過而且穩定才算。</div>
+      <div class="c"><span class="n">子級怎麼讀</span><b>x-1 開始做 · x-2 站穩 · x-3 做滿</b>x-1＝進入這個職等的工作、還需要支援；x-2＝穩定做到、不用人補位；x-3＝這個職等已經裝不下他。</div>
+      <div class="c"><span class="n">升等規則（一句話）</span><b>專業職能做滿＋其他站穩＝升</b>必過格＝<b>專業職能</b>（設計專業、AI 應用）做滿現職等（x-3），不能用其他職能拉平均；低標＝<b>核心與管理職能</b>（溝通、團隊合作、管理、當責）站穩現職等（x-2），過底線就不擋路。</div>
+      <div class="c"><span class="n">怎麼綜合</span><b>落點＝六維最低，不平均</b>強項不能抵弱項——四個 3 兩個 2 的人，看那兩個 2：是專業職能→他還是職等二；是核心/管理職能且 ≥x-2→照樣升，帶上去繼續補。弱項全部留在紀錄上，變成明確的成長清單。</div>
+    </div>
+    <p class="hint" style="margin:10px 0 0">低標怎麼驗證定得對不對：問「如果他這維只有 x-1 就升上去，具體會發生什麼災難？」講得出來＝低標成立；講不出來＝可以再放低。</p>
   </div>`;
 }
-function openP(pid){
-  const a=latest(pid);
-  if(a&&bucketLv(a))personView(pid);else rate(pid);
-}
+function openP(pid){personView(pid);}
 function personView(pid){
   const p=DB.people.find(x=>x.id===pid);if(!p)return;
-  const a=latest(pid);if(!a||!bucketLv(a)){rate(pid);return;}
+  const a=latest(pid);
+  if(!a||!bucketLv(a)){
+    document.getElementById('crumb').innerHTML=`<button class="btn sm" onclick="home()" style="background:transparent;color:#cfd8e6;border-color:rgba(255,255,255,.3)">← 名單</button>`;
+    document.getElementById('stage').innerHTML=`
+    <div class="row" style="margin-bottom:10px"><b style="font-size:18px">${esc(p.name)}</b><span class="pill y">${a?'未評完':'尚未評分'}</span></div>
+    <div class="card" style="padding:64px 24px;text-align:center">
+      <p class="hint" style="margin:0 0 18px;font-size:14px">這頁還是空的——完成六個維度的評分後，這裡會是 ${esc(p.name)} 的完整分析：職級落點、雷達圖、人物側寫、晉升檢核。</p>
+      <button class="btn pri" style="font-size:15px;padding:10px 28px" onclick="rate('${p.id}')">評分去 →</button>
+    </div>`;
+    return;
+  }
   document.getElementById('crumb').innerHTML=`<button class="btn sm" onclick="home()" style="background:transparent;color:#cfd8e6;border-color:rgba(255,255,255,.3)">← 名單</button>`;
   const b=bucketLv(a);const d=describe(a);
   const vals=COMP.map(c=>(rank(a.picks[c])+1)/10);

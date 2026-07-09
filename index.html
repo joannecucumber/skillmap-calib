@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UIUX 職能評定 · 校準</title>
+<style>
+  :root{--navy:#16233f;--blue:#2f6db0;--ink:#2b3648;--muted:#6b7280;--faint:#9aa3b2;
+    --line:#e4e7ee;--bg:#f4f5f8;--hl:#eef3f8;--ok:#0f7b55;--bad:#dc2626;--warn:#c8791f;--gold:#b8860b;
+    --sans:-apple-system,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;}
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:14px;}
+  .bar{position:sticky;top:0;z-index:6;background:var(--navy);color:#fff;padding:12px 22px;display:flex;gap:12px;align-items:center;}
+  .bar b{font-size:15px;}
+  .bar .hint{color:#9fb0c8;}
+  .stage{max-width:980px;margin:20px auto 120px;padding:0 20px;}
+  .card{background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:14px;}
+  .btn{font-family:inherit;border:1px solid var(--line);background:#fff;border-radius:9px;padding:8px 14px;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;}
+  .btn:hover{background:var(--hl);}
+  .btn.pri{background:var(--navy);color:#fff;border-color:var(--navy);}
+  .btn.sm{padding:5px 11px;font-size:12.5px;}
+  .btn.ghost{border:none;background:none;color:var(--muted);}
+  .btn.ghost:hover{color:var(--bad);}
+  input,select{font-family:inherit;font-size:14px;border:1px solid var(--line);border-radius:8px;padding:8px 11px;color:var(--ink);background:#fff;}
+  .hint{color:var(--faint);font-size:12px;}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+  table{border-collapse:collapse;width:100%;font-size:13px;}
+  th{text-align:left;color:var(--faint);font-weight:600;font-size:11.5px;padding:9px 10px;border-bottom:1px solid var(--line);}
+  td{padding:10px;border-bottom:1px solid #f0f1f4;vertical-align:middle;}
+  tr.click{cursor:pointer;} tr.click:hover td{background:var(--hl);}
+  .pill{display:inline-block;font-size:12px;font-weight:800;padding:2px 11px;border-radius:20px;background:var(--hl);color:var(--navy);white-space:nowrap;}
+  .pill.g{background:#e4f2ea;color:var(--ok);} .pill.r{background:#fdeaea;color:var(--bad);} .pill.y{background:#fdf3e7;color:var(--warn);}
+  .match{color:var(--ok);font-weight:800;} .miss{color:var(--bad);font-weight:800;}
+  /* 快速評定 */
+  .dim{border:1px solid var(--line);border-radius:12px;background:#fff;margin-bottom:10px;padding:14px 18px;}
+  .dim-h{display:flex;align-items:center;gap:12px;margin-bottom:10px;}
+  .dim-tag{font-size:12px;font-weight:800;color:#fff;background:var(--navy);border-radius:5px;padding:3px 11px;}
+  .dim-sel{margin-left:auto;font-size:14px;font-weight:800;color:var(--blue);}
+  .dim-sel.none{color:var(--faint);font-weight:600;}
+  .segs{display:flex;gap:4px;flex-wrap:wrap;}
+  .seg{flex:1;min-width:52px;text-align:center;border:1px solid var(--line);border-radius:8px;padding:8px 4px;font-size:12.5px;font-weight:700;cursor:pointer;color:var(--muted);background:#fafbfc;}
+  .seg:hover{border-color:var(--blue);color:var(--blue);}
+  .seg.on{background:var(--navy);border-color:var(--navy);color:#fff;}
+  .seg.on.lo{background:var(--warn);border-color:var(--warn);}
+  .seg .lv2{display:block;font-size:9.5px;font-weight:600;opacity:.65;}
+  .rtext{margin-top:10px;font-size:12.5px;line-height:1.75;color:var(--ink);background:#f7f9fc;border-radius:8px;padding:10px 14px;white-space:pre-wrap;}
+  .rtext .quant{color:#5a6b82;background:#eef2f8;border-radius:6px;padding:4px 9px;display:inline-block;margin-top:6px;font-size:12px;}
+  .rtext .quant b{color:var(--blue);}
+  .rtext.empty{color:var(--faint);background:none;padding:4px 2px;}
+  /* 校準 */
+  .bars{display:flex;gap:8px;align-items:flex-end;height:110px;margin:8px 0 2px;}
+  .barc{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .barv{width:100%;max-width:54px;border-radius:6px 6px 0 0;background:var(--blue);}
+  .barv.min{background:var(--warn);}
+  .barl{font-size:10.5px;color:var(--muted);white-space:nowrap;}
+  .barr{font-size:11px;font-weight:800;color:var(--navy);}
+  .gate-ok{color:var(--ok);font-weight:700;} .gate-no{color:var(--bad);font-weight:700;}
+  .concept{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px;}
+  .concept .c{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.7;}
+  .concept .c b{display:block;color:var(--navy);margin-bottom:4px;}
+  .concept .n{font-size:11px;font-weight:800;color:var(--blue);}
+</style>
+</head>
+<body>
+<div class="bar"><b>UIUX 職能評定 · 校準模式</b>
+  <span class="hint">先評你最了解的人 → 回頭看哪種算法最貼你的直覺</span>
+  <span style="margin-left:auto" id="crumb"></span></div>
+<div class="stage" id="stage"></div>
+
+<script>
+const DATA={"COMP": ["設計專業", "AI 應用", "溝通", "團隊合作", "管理", "當責"], "RUNGS": [[{"id": "職等一", "lv": 1, "text": "基礎 UIUX 能力：熟練設計工具與 Design System，產出符合設計規範（一致性、易用性、雙平台規範）。理解需求背後要解決的問題與對象，不清楚會主動釐清。量化：交辦案件可在指導下如期完成，重工率低，無基本規範錯誤。"}, {"id": "2-1", "lv": 2, "text": "能獨立完成單一產品線之 UIUX 需求：依據既有規範完成流程、資訊架構與介面設計，考量異常狀況（網路異常、資料延遲）。量化：可獨立完成單一產品線常態案件，無須主管或資深設計師重新執行。"}, {"id": "2-2", "lv": 2, "text": "能獨立完成兩個以上產品線之需求，理解不同產品定位、TA 與市場差異調整設計；需求不完整時能主動提出設計假設與方向。量化：可獨立支援兩個以上產品線案件，並維持各產品體驗一致性。"}, {"id": "2-3", "lv": 2, "text": "能獨立把一個想法從問題定義帶到可驗證／可上線：完成假設、設計、可互動原型與驗證規劃（完整小閉環）。量化：每半年至少 1 項「想法 → 原型 → 驗證」完整案例，原型品質足以直接推進決策。"}, {"id": "3-1", "lv": 3, "text": "不僅執行設計，能理解案件目標、產品定位、TA 與商業目的，依目的提出設計建議並連結核心指標。量化：每季至少 3 項設計建議被採納，並以客觀數據證明有效提升 CTR、CVR、留存或其他核心指標。"}, {"id": "3-2", "lv": 3, "text": "能透過數據、易用性測試與使用者研究驗證設計成果並持續迭代；能判斷 AI 輔助研究的適用邊界（AI 供廣度探索、真人驗證深度）。量化：每季至少 3 項設計優化案例，並以客觀數據證明有效提升案件目標。"}, {"id": "3-3", "lv": 3, "text": "能從多個案件歸納高成效設計模式（流程、元件、驗證方法），成功複製至不同案件或團隊。量化：每季至少建立 1 項高成效設計方法或模組，並以數據證明提升案件成效或團隊效率。"}, {"id": "4-1", "lv": 4, "text": "監督管理團隊體驗品質：建立團隊共用之設計規範、研究標準與審稿機制，確保產出穩定且符合產品目標。設計策略規劃：根據事業目標與市場機會規劃設計方向與資源優先序。量化：建立並維護規範或審稿機制，降低品質不一致導致之重工與溝通成本；參與重要專案設計策略規劃並以數據證明成效。"}, {"id": "4-2", "lv": 4, "text": "建立部門級設計系統、研究知識庫與體驗標準，統一不同事業、專案或設計師之品質與執行方式。設計策略規模化：將成功設計模式擴展至多個產品或事業。量化：建立可供部門共用之設計系統、研究資產或最佳實務，提升跨事業效率、一致性或新人上手速度；推動至少 1 項跨產品設計策略並以數據證明成效。"}, {"id": "4-3", "lv": 4, "text": "建立組織級體驗策略與治理機制：透過設計標準化、研究體系與體驗一致性，提升產品價值、營運效率或商業成果。商業價值與團隊影響力：帶領團隊達成公司商業目標。量化：建立可跨部門、跨產品複製之體驗規範與管理機制，並以數據證明提升一致性、降低管理成本或創造商業價值；考核期內帶動團隊整體產能提升 40%，或實質提升營收／降低獲客成本，並能證明設計策略與成果之關聯。"}], [{"id": "職等一", "lv": 1, "text": "能熟練將 AI 工具融入日常流程：資料整理、競品研究、文案發想、UI 產出與可互動原型的基礎修改。量化：日常主要任務常態使用 AI 協作並能展示實例，製作效率提升 30% 以上，產出符合設計規範。"}, {"id": "2-1", "lv": 2, "text": "針對重複性高的常規任務運用 AI 輔助執行（研究整理、流程圖、UI 初稿、原型修改），降低作業時間。量化：日常導入 AI 協作並附具體效率數據，實際提升 60% 以上工作效率。"}, {"id": "2-2", "lv": 2, "text": "建立個人固定使用之 AI 工作流（研究 → 設計 → 可互動原型），能用 AI 產出可互動原型驗證單一流程，不依賴工程資源。量化：交付至少 1 項個人 AI 工作流應用並附效率數據，實際提升 70% 以上工作效率或大幅減少重複作業。"}, {"id": "2-3", "lv": 2, "text": "能獨立運用自動化串接或自訂 AI Bot／Agent 完成複雜任務（多頁原型、研究彙整、設計交付）。量化：交付至少 1 項個人自動化或 Agent 應用並附效率數據，實際提升 90% 以上效率或跨職能取代部分工作。"}, {"id": "3-1", "lv": 3, "text": "將個人驗證成功的 AI 工作流／Agent 模組化，撰寫清晰 SOP 並推廣至團隊落地。量化：每半年至少 1 套完整 AI 模組化工作流供團隊複用，並以數據證明提升團隊效率 20% 或減少跨職能協作成本。"}, {"id": "3-2", "lv": 3, "text": "將個人驗證成功的 AI 工作流／Agent 模組化推廣至團隊（研究、原型、驗證環節）。量化：每半年至少 1 套模組供團隊複用，並以數據證明提升團隊效率 30% 或減少協作成本。"}, {"id": "3-3", "lv": 3, "text": "主導團隊級 AI 工作流建置（含研究自動化、原型產線），跨職能取代並減少人力成本。量化：每半年至少 1 套模組供團隊複用，並以數據證明提升團隊效率 40% 同時減少協作磨擦。"}, {"id": "4-1", "lv": 4, "text": "主導 AI 技術導入，重新設計既有工作流程或跨職能協作模式，創造過去不存在的新工作方式。量化：每年至少 1 項新 AI 工作模式，並以數據證明：新增團隊原本無法承接之能力、減少至少 1 個職能間協作流程、大幅縮短交付週期。"}, {"id": "4-2", "lv": 4, "text": "將成功驗證之 AI 工作模式推廣至其他部門，創造跨部門營運效益。量化：以數據證明其他部門成功複製、跨部門效率提升、跨部門成本降低。"}, {"id": "4-3", "lv": 4, "text": "主導組織級 AI 技術導入與自動化產線建置。量化：AI 模組具備跨專案／跨部門規模化複製特性，並以明確數據證明結構性財務貢獻（大幅降低營運成本或實質提升營收、轉換、獲客效率）。"}], [{"id": "職等一", "lv": 1, "text": "能簡單清晰表達設計理念、目的與做法，具備基本簡報能力；善於聆聽、接受回饋並調整。"}, {"id": "2-1", "lv": 2, "text": "能清楚表達設計內容、修改原因與設計邏輯，使窗口、PM、行銷或 GL 理解設計方向。量化：能獨立完成需求確認、提案說明與修改溝通，避免因溝通造成重工或方向錯誤。"}, {"id": "2-2", "lv": 2, "text": "能分析不同設計方案優缺點，提出符合產品目標之建議，影響需求方決策。量化：每季至少 1 項設計建議被採納執行，並以客觀數據或研究證據佐證其有效性（質重於量）。"}, {"id": "2-3", "lv": 2, "text": "能透過簡報或提案影響窗口、PM、行銷或 GL 調整原始需求或執行方向。量化：每季至少主導 1 項設計提案並成功影響需求方決策，附客觀數據或研究證據佐證。"}, {"id": "3-1", "lv": 3, "text": "能將設計決策與產品定位、商業目標及事業方向建立連結，使 BO 理解設計價值。量化：能於專案中清楚說明設計策略與事業目標之關聯並獲 BO 認同。"}, {"id": "3-2", "lv": 3, "text": "能運用數據、使用者需求與商業觀點影響 BO 對案件執行方向之決策。量化：建議被納入專案規劃或執行策略，並以數據證明提升成效、營收、轉換或效率。"}, {"id": "3-3", "lv": 3, "text": "能與 BO 協商資源投入、案件優先序或執行方向，推動事業成果最大化。量化：建議被納入資源配置或優先序決策，有效提升事業成果或降低成本。"}, {"id": "4-1", "lv": 4, "text": "能代表設計團隊與 BU Head 或部門主管溝通需求、策略方向與資源規劃。量化：能獨立參與部門級會議並清楚傳達設計團隊觀點與需求。"}, {"id": "4-2", "lv": 4, "text": "能運用數據、商業分析與設計觀點影響 BU Head 或部門主管之決策方向。量化：建議被納入部門規劃、資源配置或重要專案決策，並產生可量化效益。"}, {"id": "4-3", "lv": 4, "text": "能整合不同部門觀點與需求，建立共識並推動跨部門重要事項執行。量化：成功推動至少 1 項跨部門重要專案或策略，對組織目標產生可量化效益。"}], [{"id": "職等一", "lv": 1, "text": "積極參與討論並表達想法，接受更有經驗者的建議以確保符合團隊需求。"}, {"id": "2-1", "lv": 2, "text": "主動參與團隊討論與設計分享，願意分享經驗並接受回饋。量化：於每週 Design review 及設計例會主動分享案例、學習心得或工作經驗。"}, {"id": "2-2", "lv": 2, "text": "能針對他人設計方案提供具體且有價值的建議，協助提升團隊整體設計品質。量化：持續於 review 中提供被採納的具體建議，並有實例佐證。"}, {"id": "2-3", "lv": 2, "text": "能透過協作與專業建議影響團隊決策，提升團隊整體成果。量化：每季至少協助 1 項團隊案件提升效率或成效，並提出成果佐證。"}, {"id": "3-1", "lv": 3, "text": "能與其他部門建立合作關係，推動跨部門專案順利執行。量化：每年至少參與 1 項跨部門專案並達成目標。"}, {"id": "3-2", "lv": 3, "text": "能運用專業洞察影響跨部門決策，提高專案成果。量化：建議被跨部門採納執行，有效提升成效、效率或降低協作成本。"}, {"id": "3-3", "lv": 3, "text": "能整合跨部門目標、資源與需求，推動跨部門專案順利執行。量化：成功推動至少 1 項跨部門重要專案達標，提升成果或降低協作成本。"}, {"id": "4-1", "lv": 4, "text": "能代表部門與其他部門或高階主管協作，確保部門目標與組織目標一致。量化：每年至少參與 1 項組織級專案或策略規劃。"}, {"id": "4-2", "lv": 4, "text": "能整合多方利害關係人意見，建立跨組織合作共識。量化：成功整合多方意見推動重大專案執行，提升組織協作效率。"}, {"id": "4-3", "lv": 4, "text": "能建立跨部門合作機制，提升組織整體合作效能。量化：建立或優化跨部門合作機制，並以數據證明提升組織效率或成果。"}], [{"id": "職等一", "lv": 1, "text": "自主管理時程及工作流程。量化：評估工時並準時交付，主動回報進度與問題，讓協作方能迅速接續。"}, {"id": "2-1", "lv": 2, "text": "能管理需求明確之案件，掌握時程與交付內容。量化：可獨立完成需求明確之案件並依時程交付。"}, {"id": "2-2", "lv": 2, "text": "能管理需求變動或需跨部門協作之案件，主動協調時程、需求與執行內容。量化：可獨立管理跨部門協作案件，並有效掌握進度與風險。"}, {"id": "2-3", "lv": 2, "text": "能管理跨產品線或需求模糊之案件，主動釐清需求並推動執行。量化：可獨立管理需求模糊案件，有效掌握進度、風險與資源協調。"}, {"id": "3-1", "lv": 3, "text": "能發現執行痛點並完成改善驗證。量化：每年至少 1 項流程改善案例，並以數據證明提升效率、降低工時或提升品質。"}, {"id": "3-2", "lv": 3, "text": "能將成功經驗轉化為可複用之設計規範、研究方法、協作流程或模板，應用於多個案件。量化：建立至少 1 項可複用流程並於 3 個以上案件成功應用。"}, {"id": "3-3", "lv": 3, "text": "能推動團隊導入成功流程、模板或工作方式，提升團隊整體執行能力。量化：運用 AI 完成至少 1 項團隊級流程導入，並以數據證明效率或成效提升。"}, {"id": "4-1", "lv": 4, "text": "能依據團隊目標進行人力、案件與資源配置。量化：以數據證明有效提升團隊產能或執行效率。"}, {"id": "4-2", "lv": 4, "text": "能建立團隊運作機制與管理制度，提升團隊整體能力。量化：建立團隊制度並以數據證明能力、品質或效率提升。"}, {"id": "4-3", "lv": 4, "text": "能建立並管理團隊目標，帶領團隊達成組織目標。量化：達成團隊年度目標，並以數據證明產能、成效、人才成長或營運成果提升。"}], [{"id": "職等一", "lv": 1, "text": "對自己的產出品質負責（稿件無誤、檔案整理清晰、可交接）。針對弱項主動補足（新工具、新方法的學習與應用）。"}, {"id": "2-1", "lv": 2, "text": "能完整紀錄案件目標、執行內容與成果，確保成果可追溯。量化：負責案件皆完成成果紀錄與歸檔。"}, {"id": "2-2", "lv": 2, "text": "能主動分析案件未達預期之原因，找出影響成果之關鍵問題。量化：每季至少完成 1 項成效分析並提出具體改善方向。"}, {"id": "2-3", "lv": 2, "text": "能將改善方案實際應用於後續案件，避免相同問題再次發生。量化：每季至少 1 項改善措施導入，並以客觀數據證明其提升品質、效率或成效。"}, {"id": "3-1", "lv": 3, "text": "能主動發現影響團隊成果或品質之共通問題，提出改善方向。量化：每年至少 1 項團隊層級問題分析，完成原因分析與改善建議。"}, {"id": "3-2", "lv": 3, "text": "能推動改善方案於團隊落地執行，提升團隊成果、品質或效率。量化：每年至少 1 項團隊改善案例，並以數據證明其有效。"}, {"id": "3-3", "lv": 3, "text": "能持續追蹤改善成果，確保措施被持續執行並產生長期效益。量化：以數據證明改善持續有效達 6 個月以上。"}, {"id": "4-1", "lv": 4, "text": "能主動發現影響組織成果、營運效率或人才發展之關鍵問題並提出改善。量化：每年至少 1 項組織層級問題分析，完成原因分析與改善建議。"}, {"id": "4-2", "lv": 4, "text": "能建立制度、流程或管理機制，避免相同問題持續發生。量化：建立至少 1 項組織級改善機制，並以數據證明降低風險、成本、重工率或管理成本。"}, {"id": "4-3", "lv": 4, "text": "能持續推動組織改善，提升整體營運成果與組織能力。量化：改善方案對組織成果、營運效率、成本控制、人才發展或營收成長產生可量化效益。"}]], "AXIS": [{"name": "職等一", "title": "初階設計師  Junior Designer", "axis": null}, {"name": "職等二", "title": "中階設計師  Mid-Level Designer", "axis": ["獨立構建", "提升個人生產力", "溝通對象：窗口、PM、行銷、GL", "幫團隊成功", "管理自身工作", "對個人成果負責"]}, {"name": "職等三", "title": "資深設計師  Senior Designer", "axis": ["成效導向設計", "提升團隊生產力", "溝通對象：BO", "幫跨部門成功", "提升團隊執行能力", "對團隊成果負責"]}, {"name": "職等四", "title": "主任設計師  Lead Designer", "axis": ["產品決策與商業影響力", "創造公司價值", "溝通對象：BU Head、部門主管", "幫公司成功", "帶領團隊達成目標", "對組織成果負責"]}], "NAMES": []};
+const {COMP,RUNGS,AXIS,NAMES}=DATA;
+const KEY='uiux_assess_v2';
+const esc=s=>String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+let DB;try{DB=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){DB={};}
+DB.people=DB.people||[];DB.assess=DB.assess||[];
+const save=()=>localStorage.setItem(KEY,JSON.stringify(DB));
+
+const RANKS=['職等一','2-1','2-2','2-3','3-1','3-2','3-3','4-1','4-2','4-3'];
+const rank=id=>id==='未達'?-1:RANKS.indexOf(id);
+const LV_OF=r=>r<0?0:(r===0?1:(r<=3?2:(r<=6?3:4)));
+const LVTXT=['未達','職等一','職等二','職等三','職等四'];
+const GATES={2:{gates:[['設計專業','2-1'],['AI 應用','2-1']],low:0,lowTxt:'職等一全項'},
+  3:{gates:[['設計專業','2-3'],['AI 應用','2-3']],low:2,lowTxt:'其餘 ≥ 2-2'},
+  4:{gates:[['設計專業','3-3'],['AI 應用','3-3'],['溝通','3-3']],low:5,lowTxt:'其餘 ≥ 3-2'}};
+
+function fmtRung(t){
+  t=(t||'').trim();const i=t.search(/量化[:：]?/);
+  let beh=t,q='';
+  if(i>=0){beh=t.slice(0,i).trim();q=t.slice(i).replace(/^量化[:：]?\s*/,'').trim();}
+  let out=esc(beh);
+  if(q)out+=`<div class="quant">量化｜${esc(q).replace(/(\d+(?:\.\d+)?\s*(?:%|倍|hr|小時|分鐘)|\d+\s*[→\-–]\s*\d+\s*%?)/g,'<b>$1</b>')}</div>`;
+  return out;
+}
+function latest(pid){return DB.assess.filter(a=>a.pid===pid).sort((a,b)=>(b.date||'').localeCompare(a.date||''))[0]||null;}
+function ranksOf(a){return COMP.map(c=>a.picks[c]===undefined?null:rank(a.picks[c]));}
+function bucketLv(a){const rs=ranksOf(a);if(rs.some(r=>r===null))return null;const m=Math.min(...rs);return {lv:LV_OF(m),minR:m,minCols:COMP.filter((c,i)=>rs[i]===m)};}
+function avgLv(a){const rs=ranksOf(a);if(rs.some(r=>r===null))return null;const m=rs.reduce((s,x)=>s+Math.max(x,-1),0)/rs.length;return {lv:LV_OF(Math.round(m)),avg:m};}
+function gateCheck(a,lv){const next=lv+1;const G=GATES[next];if(!G)return null;
+  const items=G.gates.map(([c,rid])=>({label:`${c} ${rid}`,ok:rank(a.picks[c]??'未達')>=rank(rid)}));
+  const lowMiss=COMP.filter(c=>rank(a.picks[c]??'未達')<G.low);
+  return {next,items,lowTxt:G.lowTxt,lowMiss,allOk:items.every(x=>x.ok)&&!lowMiss.length};}
+
+/* ===== 首頁 ===== */
+function home(){
+  document.getElementById('crumb').innerHTML='';
+  const done=DB.people.filter(p=>{const a=latest(p.id);return a&&bucketLv(a);});
+  const rows=DB.people.map(p=>{
+    const a=latest(p.id);const b=a?bucketLv(a):null;
+    return `<tr class="click" onclick="rate('${p.id}')">
+      <td><b>${esc(p.name)}</b></td>
+      <td>${a&&a.gut?`<span class="pill">${esc(a.gut)}</span>`:'<span class="hint">—</span>'}</td>
+      <td>${b?`<span class="pill ${a.gut?(a.gut===LVTXT[b.lv]?'g':'r'):''}">${LVTXT[b.lv]}</span>`:(a?`<span class="pill y">未評完</span>`:'<span class="hint">未評</span>')}</td>
+      <td onclick="event.stopPropagation()"><button class="btn ghost sm" onclick="delPerson('${p.id}')">刪</button></td></tr>`;}).join('');
+  document.getElementById('stage').innerHTML=`
+  <div class="concept">
+    <div class="c"><span class="n">STEP 1</span><b>先評你最了解的人</b>每個維度直接點「他在哪一級」，點級距可看該級的標準原文。同時記下你的直覺職級。</div>
+    <div class="c"><span class="n">STEP 2</span><b>評 3–5 人後看校準</b>系統把「你的直覺」跟三種算法（木桶／平均／必過格）的落點並排，看哪種最貼現況。</div>
+    <div class="c"><span class="n">STEP 3</span><b>反推規則</b>不一致的人就是線索：是木桶太嚴？門檻放錯格？據此修計算邏輯，而不是先信算法。</div>
+  </div>
+  <div class="row" style="margin-bottom:12px">
+    <input id="np" list="nl" placeholder="輸入你最了解的人" style="width:220px">
+    <datalist id="nl">${NAMES.map(n=>`<option value="${esc(n)}">`).join('')}</datalist>
+    <button class="btn pri" onclick="addPerson()">＋ 開始評定</button>
+    <button class="btn" style="margin-left:auto" onclick="calib()" ${done.length?'':'disabled'}>📊 校準對照（已評完 ${done.length} 人）</button>
+  </div>
+  <div class="card" style="padding:2px 16px">
+    <table><tr><th>成員</th><th>你的直覺</th><th>算法落點（木桶）</th><th></th></tr>
+    ${rows||'<tr><td colspan="4" class="hint" style="padding:22px;text-align:center">從你最有把握的人開始——評 3 到 5 個，校準才有意義</td></tr>'}</table>
+  </div>`;
+}
+function addPerson(){
+  const n=document.getElementById('np').value.trim();if(!n)return;
+  let p=DB.people.find(x=>x.name===n);
+  if(!p){p={id:uid(),name:n};DB.people.push(p);save();}
+  rate(p.id);
+}
+function delPerson(id){if(!confirm('刪除此成員與評定？'))return;DB.people=DB.people.filter(p=>p.id!==id);DB.assess=DB.assess.filter(a=>a.pid!==id);save();home();}
+
+/* ===== 快速評定 ===== */
+let curShown={};
+function rate(pid){
+  const p=DB.people.find(x=>x.id===pid);if(!p)return;
+  let a=latest(pid);
+  if(!a){a={id:uid(),pid,date:new Date().toISOString().slice(0,10),picks:{},gut:''};DB.assess.push(a);save();}
+  document.getElementById('crumb').innerHTML=`<button class="btn sm" onclick="home()" style="background:transparent;color:#cfd8e6;border-color:rgba(255,255,255,.3)">← 名單</button>`;
+  let out=`<div class="row" style="margin-bottom:12px">
+    <b style="font-size:17px">${esc(p.name)}</b>
+    <span class="hint">先憑直覺：他現在是——</span>
+    <select onchange="setGut('${a.id}',this.value)">
+      <option value="">（直覺職級）</option>
+      ${['職等一','職等二','職等三','職等四'].map(l=>`<option ${a.gut===l?'selected':''}>${l}</option>`).join('')}
+    </select>
+    <span class="hint">評的時候先不看算法結果，評完到校準頁對答案。</span>
+  </div>`;
+  COMP.forEach((comp,ci)=>{
+    const pick=a.picks[comp];
+    const shown=curShown[comp]!==undefined?curShown[comp]:(pick!==undefined?rank(pick):null);
+    let segs=`<div class="seg ${pick==='未達'?'on lo':''}" onclick="setPick('${a.id}','${comp}','未達')">未達</div>`;
+    RUNGS[ci].forEach((r,ri)=>{
+      segs+=`<div class="seg ${pick===r.id?'on':''}" onclick="setPick('${a.id}','${comp}','${r.id}')" onmouseenter="peek('${comp}',${ri})">${r.id}<span class="lv2">${AXIS[r.lv-1].name}</span></div>`;
+    });
+    let rt='';
+    if(shown!==null&&shown>=0){const r=RUNGS[ci][shown];
+      rt=`<div class="rtext"><b style="color:var(--blue)">${r.id}</b>　${fmtRung(r.text)}</div>`;}
+    else rt=`<div class="rtext empty">滑過或點選級距，這裡會顯示該級的標準原文（含量化）</div>`;
+    out+=`<div class="dim" id="dim-${ci}">
+      <div class="dim-h"><span class="dim-tag">${comp}</span>
+        ${AXIS[0]?'':''}<span class="hint">他穩定做到哪一級？</span>
+        <span class="dim-sel ${pick===undefined?'none':''}">${pick===undefined?'未評':(pick==='未達'?'未達職等一':pick)}</span></div>
+      <div class="segs">${segs}</div>${rt}
+    </div>`;
+  });
+  const filled=COMP.filter(c=>a.picks[c]!==undefined).length;
+  out+=`<div class="row" style="margin-top:14px">
+    <span class="hint">已評 ${filled}/6 維</span>
+    <button class="btn pri" style="margin-left:auto" onclick="${filled===6?`calib()`:`toastMsg()`}">${filled===6?'✓ 評完了，去校準對照':'六維評完才能校準'}</button>
+  </div>`;
+  document.getElementById('stage').innerHTML=out;
+}
+function peek(comp,ri){
+  curShown[comp]=ri;
+  const ci=COMP.indexOf(comp);const r=RUNGS[ci][ri];
+  const el=document.querySelector(`#dim-${ci} .rtext`);
+  if(el){el.classList.remove('empty');el.innerHTML=`<b style="color:var(--blue)">${r.id}</b>　${fmtRung(r.text)}`;}
+}
+function setGut(aid,v){const a=DB.assess.find(x=>x.id===aid);if(a){a.gut=v;save();}}
+function setPick(aid,comp,val){
+  const a=DB.assess.find(x=>x.id===aid);if(!a)return;
+  a.picks[comp]=val;save();curShown={};rate(a.pid);
+}
+function toastMsg(){alert('六個維度都選了，校準才有意義。');}
+
+/* ===== 校準對照 ===== */
+function calib(){
+  document.getElementById('crumb').innerHTML=`<button class="btn sm" onclick="home()" style="background:transparent;color:#cfd8e6;border-color:rgba(255,255,255,.3)">← 名單</button>`;
+  const done=DB.people.map(p=>({p,a:latest(p.id)})).filter(x=>x.a&&bucketLv(x.a));
+  if(!done.length){document.getElementById('stage').innerHTML='<p class="hint">還沒有評完的人。</p>';return;}
+  let bMatch=0,aMatch=0,gutN=0;
+  const rows=done.map(({p,a})=>{
+    const b=bucketLv(a),av=avgLv(a);
+    const g=gateCheck(a,b.lv);
+    const gutOkB=a.gut?(a.gut===LVTXT[b.lv]):null;
+    const gutOkA=a.gut?(a.gut===LVTXT[av.lv]):null;
+    if(a.gut){gutN++;if(gutOkB)bMatch++;if(gutOkA)aMatch++;}
+    return {p,a,b,av,g,gutOkB,gutOkA};
+  });
+  let out=`<h2 style="font-size:16px;color:var(--navy);margin:0 0 4px">校準對照：你的直覺 vs 三種算法</h2>
+  <p class="hint" style="margin:0 0 12px">${gutN?`木桶法貼合直覺 <b class="match">${bMatch}/${gutN}</b>　·　平均法貼合 <b>${aMatch}/${gutN}</b>　——不一致的人是修規則的線索，點列展開看原因。`:'（填了直覺職級才能對答案）'}</p>
+  <div class="card" style="padding:2px 16px"><table>
+  <tr><th>成員</th><th>你的直覺</th><th>木桶落點<br><span style="font-weight:400">（最低維＝落點）</span></th><th>平均落點<br><span style="font-weight:400">（舊加總邏輯）</span></th><th>晉升檢核（必過格）</th></tr>`;
+  rows.forEach(({p,a,b,av,g,gutOkB,gutOkA},i)=>{
+    const gateTxt=g?g.items.map(x=>`<span class="${x.ok?'gate-ok':'gate-no'}">${x.ok?'✓':'✗'}${esc(x.label)}</span>`).join(' ')+(g.lowMiss.length?` <span class="gate-no">✗${g.lowTxt}(缺${g.lowMiss.join('、')})</span>`:` <span class="gate-ok">✓${g.lowTxt}</span>`)+(g.allOk?' <b class="match">→可晉升</b>':''):'—';
+    out+=`<tr class="click" onclick="document.getElementById('det-${i}').style.display=document.getElementById('det-${i}').style.display==='none'?'table-row':'none'">
+      <td><b>${esc(p.name)}</b></td>
+      <td>${a.gut?`<span class="pill">${esc(a.gut)}</span>`:'—'}</td>
+      <td><span class="pill ${gutOkB===null?'':(gutOkB?'g':'r')}">${LVTXT[b.lv]}</span> <span class="hint">卡在${b.minCols.join('、')}</span></td>
+      <td><span class="pill ${gutOkA===null?'':(gutOkA?'g':'r')}">${LVTXT[av.lv]}</span></td>
+      <td style="font-size:11.5px;line-height:1.9">${gateTxt}</td></tr>
+    <tr id="det-${i}" style="display:none"><td colspan="5" style="background:#fafbfc">
+      <div class="bars">${COMP.map(c=>{const r=rank(a.picks[c]);const h=Math.max(6,(r+1)/10*100);const isMin=b.minCols.includes(c);
+        return `<div class="barc"><span class="barr">${a.picks[c]==='未達'?'✗':esc(a.picks[c])}</span><div class="barv ${isMin?'min':''}" style="height:${h}%"></div><span class="barl">${c}</span></div>`;}).join('')}</div>
+      <p class="hint" style="margin:4px 0 8px">橘色＝木桶（決定落點的維度）。若你直覺他更高：可能是這維評太嚴、或木桶規則對此維不該一刀切。
+      <button class="btn sm" onclick="event.stopPropagation();rate('${p.id}')">改評分</button></p>
+    </td></tr>`;
+  });
+  out+='</table></div>';
+  out+=`<div class="card" style="padding:14px 18px;font-size:13px;line-height:1.9">
+    <b style="color:var(--navy)">怎麼讀這張表</b><br>
+    · <b>木桶＝直覺</b> 多 → 門檻制成立，照 v2 走。<br>
+    · <b>平均＝直覺</b> 多 → 你實際在用整體印象評人，門檻制會比你嚴——要嘛接受它更嚴（拉標準），要嘛放寬「木桶」為「次低維」。<br>
+    · 某維<b>常常當木桶</b>（例如大家都卡 AI 應用）→ 是團隊真實缺口，或該維標準訂太高——這就是要跟夥伴討論的格子。</div>`;
+  document.getElementById('stage').innerHTML=out;
+}
+home();
+</script>
+</body>
+</html>

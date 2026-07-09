@@ -297,6 +297,25 @@ function toastMsg(){alert('六個維度都選了，校準才有意義。');}
 
 /* ===== 校準對照 ===== */
 function dimList(a){return COMP.map(c=>`${c} ${a.picks[c]==='未達'?'未達':esc(a.picks[c])}`).join('、');}
+function behOf(ci,pick){
+  if(pick==='未達')return '尚未穩定達到職等一的標準';
+  const r=RUNGS[ci].find(x=>x.id===pick);if(!r)return'';
+  let t=r.text.split(/量化[:：]?/)[0].trim();
+  t=t.replace(/^[・.．\-\s]+/,'');
+  const sents=t.split('。').filter(s=>s.trim());
+  let out=sents[0]||'';
+  if(out.length<22&&sents[1])out+='。'+sents[1];
+  return out.replace(/\n+/g,'；');
+}
+function portrait(a){
+  const items=COMP.map((c,ci)=>{
+    const pick=a.picks[c];
+    return `<div style="display:flex;gap:10px;margin:7px 0;line-height:1.8">
+      <span style="flex-shrink:0;width:118px;font-weight:700;font-size:13px">${c} <span style="color:var(--blue)">${pick==='未達'?'未達':esc(pick)}</span></span>
+      <span style="font-size:13.5px;color:var(--ink)">${esc(behOf(ci,pick))}。</span></div>`;
+  }).join('');
+  return `<p style="margin:6px 0 2px;font-size:13.5px"><b>照你的評分，他現在是這樣的人——先核對像不像：</b></p>${items}`;
+}
 function personNarrative(p,a){
   const b=bucketLv(a),av=avgLv(a);
   const sysLv=LVTXT[b.lv],avgL=LVTXT[av.lv];
@@ -305,28 +324,27 @@ function personNarrative(p,a){
   const gutR={'職等一':1,'職等二':2,'職等三':3,'職等四':4}[gut]||0;
   const minStr=`${b.minCols.join('、')}（${b.minR<0?'未達':RANKS[b.minR]}）`;
   let paras=[];
-  paras.push(`<b>你怎麼評他的：</b>${dimList(a)}。六個維度裡最弱的是 <b>${minStr}</b>。`);
-  paras.push(`<b>系統怎麼判：</b>規則是「職級看最弱的一維」——不管其他維度多高，最弱那維到哪裡，人就落在哪裡。所以系統把 ${esc(p.name)} 判為 <b>${sysLv}</b>${b.minR>0?`（子級 ${RANKS[b.minR]}）`:''}。作為對照，「平均法」（把六維平均，接近舊版加總的邏輯）會把他放在 <b>${avgL}</b>。`);
+  // ① 人物側寫（質性，先核對）
+  paras.push(portrait(a));
+  paras.push(`<p style="margin:10px 0 2px;font-size:13px;color:var(--muted)">↑ 如果哪一條讀起來「不像他」——太客氣或太抬舉——就回去改那一維的評分。側寫對了，下面的職級才有意義。</p>`);
+  // ② 核對結論
   if(agree===null){
-    paras.push(`<b class="gate-no">你還沒填直覺職級</b>——回到他的評定頁，先憑感覺選一個。沒有直覺當答案卷，這筆就無法核對。`);
+    paras.push(`<p style="margin:10px 0;font-size:13.5px;line-height:1.9"><b class="gate-no">你還沒填直覺職級</b>——回到評定頁先憑感覺選一個，才能對答案。</p>`);
   }else if(agree){
-    paras.push(`<b class="gate-ok">✓ 直覺與系統一致（都是 ${sysLv}）。</b>這筆是好樣本：代表對 ${esc(p.name)} 這種輪廓的人，「看最弱一維」的規則跟你的判斷是同一套。這種一致的人越多，v2 的算法越可信。`);
+    paras.push(`<p style="margin:10px 0;font-size:13.5px;line-height:1.9"><b class="gate-ok">✓ 這樣的人，系統判 ${sysLv}——跟你的直覺一致。</b>這筆是好樣本：對 ${esc(p.name)} 這種輪廓，「看最弱一維」的規則跟你的判斷是同一套。</p>`);
     const g=gateCheck(a,b.lv);
-    if(g&&!g.allOk){const miss=g.items.filter(x=>!x.ok).map(x=>x.label).concat(g.lowMiss.length?[`${g.lowMiss.join('、')} 要到低標`]:[]);
-      paras.push(`順帶：他要升 ${LVTXT[g.next]} 還缺 ${miss.join('、')}——這可以直接當他的成長目標講。`);}
-    else if(g&&g.allOk)paras.push(`而且他升 ${LVTXT[g.next]} 的必過格已全數達成——如果你也覺得他該升了，這筆評定就是佐證。`);
+    if(g&&!g.allOk){const miss=g.items.filter(x=>!x.ok).map(x=>x.label).concat(g.lowMiss.length?[`${g.lowMiss.join('、')} 到低標`]:[]);
+      paras.push(`<p style="margin:6px 0;font-size:13.5px;line-height:1.9">往上看：要升 ${LVTXT[g.next]} 還缺 ${miss.join('、')}——可直接當他的成長目標。</p>`);}
+    else if(g&&g.allOk)paras.push(`<p style="margin:6px 0;font-size:13.5px;line-height:1.9">而且升 ${LVTXT[g.next]} 的必過格已全數達成——若你也覺得他該升了，這筆就是佐證。</p>`);
   }else if(gutR>b.lv){
-    paras.push(`<b class="gate-no">✗ 不一致：你的直覺是 ${gut}，系統判 ${sysLv}（低了 ${gutR-b.lv} 級）。</b>系統把他壓低的唯一原因，就是 ${minStr} 這一維。`);
-    paras.push(`<b>兩種可能，你挑一個：</b><br>
-      ① <b>你評得太嚴</b>——回去看 ${b.minCols.join('、')} 下一級的標準原文，想一件他實際做過的事：如果其實做得到，改評分，落點就會跟上你的直覺。<br>
-      ② <b>你的直覺是「整體印象」</b>——他整體很像 ${gut}，但那一維真的還沒到。這時系統沒有錯，它只是比你嚴：它在說「${gut} 的位子給他，${b.minCols.join('、')} 這一維會漏水」。${av.lv===gutR?`（注意：平均法判他 ${avgL}，跟你的直覺一致——這強烈暗示你平常就是用整體印象在評人。這不是錯，但要決定：職級要不要允許「用強項蓋掉弱項」？）`:''}`);
-    paras.push(`<b>建議動作：</b>先做 ①（重看那一維的標準）。如果重看後你仍堅持直覺，而且<b>好幾個人都卡在同一維</b>，那就不是評分問題，是規則問題——把「${b.minCols.join('、')}」這維帶去跟 Monica 討論：標準訂太高，或它不該當一票否決。`);
+    paras.push(`<p style="margin:10px 0;font-size:13.5px;line-height:1.9"><b class="gate-no">✗ 這樣的人，系統判 ${sysLv}，但你的直覺是 ${gut}。</b>壓低他的唯一原因是 ${minStr} 那一條側寫。回頭讀那一條：如果他實際做得到更高一級的事，是你評太嚴，改評分；如果那條確實就是他的現況，那系統是在說「給他 ${gut} 的位子，這一維會漏水」——你的直覺可能是整體印象。${av.lv===gutR?`（平均法判他 ${avgL}，跟你直覺一致——暗示你平常就是用整體印象評人。）`:''}</p>`);
+    paras.push(`<p style="margin:6px 0;font-size:13.5px;line-height:1.9"><b>建議：</b>先重讀那一維的下一級標準再決定。若好幾個人都卡同一維，那是規則或標準的問題，帶去跟 Monica 討論。</p>`);
   }else{
-    paras.push(`<b class="gate-no">✗ 不一致：你的直覺是 ${gut}，系統判 ${sysLv}（比你的直覺高）。</b>意思是：按你給的六維評分，他每一維都達到 ${sysLv} 的門檻了，但你心裡覺得他還不到。`);
-    paras.push(`<b>兩種可能：</b><br>① <b>你各維評鬆了</b>——尤其回看你給最高的那幾維，是「穩定做到」還是「做到過一次」？規則要求的是穩定表現。<br>② <b>你的直覺過時或摻了別的東西</b>——他可能真的成長到位了，只是你的印象停在半年前；或你直覺裡混入了年資、態度這類地圖上沒有的維度。`);
-    paras.push(`<b>建議動作：</b>逐維回想他最近一次的實際案例再對標準。如果案例撐得住評分，該更新的是你的直覺——這其實是評定系統最有價值的時刻。`);
+    paras.push(`<p style="margin:10px 0;font-size:13.5px;line-height:1.9"><b class="gate-no">✗ 這樣的人，系統判 ${sysLv}，比你的直覺（${gut}）高。</b>按上面的側寫，他每一維都到了 ${sysLv} 的門檻，但你心裡覺得還不到。可能是：①側寫有幾條其實「太抬舉」了——他是做到過、不是穩定做到，回去下修那幾維；②你的印象過時，或摻了年資、態度這類地圖上沒有的東西——那該更新的是直覺。</p>`);
   }
-  return paras.map(t=>`<p style="margin:8px 0;line-height:1.9;font-size:13.5px">${t}</p>`).join('');
+  // ③ 量化依據（最後）
+  paras.push(`<p style="margin:12px 0 0;font-size:12px;color:var(--faint);line-height:1.8;border-top:1px solid var(--line);padding-top:8px">量化依據：六維＝${dimList(a)}。規則「職級看最弱一維」→ 最弱為 ${minStr} → 落點 ${sysLv}${b.minR>0?`（子級 ${RANKS[b.minR]}）`:''}。參考：平均法（近似舊版加總）會判 ${avgL}。</p>`);
+  return paras.join('');
 }
 function calib(){
   document.getElementById('crumb').innerHTML=`<button class="btn sm" onclick="home()" style="background:transparent;color:#cfd8e6;border-color:rgba(255,255,255,.3)">← 名單</button>`;

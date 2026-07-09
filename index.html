@@ -158,7 +158,7 @@ function home(){
   const done=DB.people.filter(p=>{const a=latest(p.id);return a&&bucketLv(a);});
   const rows=DB.people.map(p=>{
     const a=latest(p.id);const b=a?bucketLv(a):null;
-    return `<tr class="click" onclick="rate('${p.id}')">
+    return `<tr class="click" onclick="openP('${p.id}')">
       <td><b>${esc(p.name)}</b></td>
       <td>${a&&a.gut?`<span class="pill">${esc(a.gut)}</span>`:'<span class="hint">—</span>'}</td>
       <td>${b?`<span class="pill ${a.gut?(a.gut===LVTXT[b.lv]?'g':'r'):''}">${LVTXT[b.lv]}</span>`:(a?`<span class="pill y">未評完</span>`:'<span class="hint">未評</span>')}</td>
@@ -180,11 +180,49 @@ function home(){
     ${rows||'<tr><td colspan="4" class="hint" style="padding:22px;text-align:center">從你最有把握的人開始——評 3 到 5 個，校準才有意義</td></tr>'}</table>
   </div>`;
 }
+function openP(pid){
+  const a=latest(pid);
+  if(a&&bucketLv(a))personView(pid);else rate(pid);
+}
+function personView(pid){
+  const p=DB.people.find(x=>x.id===pid);if(!p)return;
+  const a=latest(pid);if(!a||!bucketLv(a)){rate(pid);return;}
+  document.getElementById('crumb').innerHTML=`<button class="btn sm" onclick="home()" style="background:transparent;color:#cfd8e6;border-color:rgba(255,255,255,.3)">← 名單</button>`;
+  const b=bucketLv(a);const d=describe(a);
+  const vals=COMP.map(c=>(rank(a.picks[c])+1)/10);
+  const agree=a.gut?(a.gut===LVTXT[b.lv]):null;
+  const badge=agree===null?'<span class="pill y">未填直覺</span>':agree?'<span class="pill g">✓ 與你的直覺一致</span>':'<span class="pill r">✗ 與你的直覺不一致</span>';
+  let out=`<div class="row" style="margin-bottom:10px">
+    <b style="font-size:18px">${esc(p.name)}</b>
+    <span class="hint">直覺</span><span class="pill">${a.gut?esc(a.gut):'—'}</span>${badge}
+    <span style="margin-left:auto" class="row"><button class="btn sm" onclick="rate('${p.id}')">改評分</button><button class="btn pri sm" onclick="calib()">📊 全員校準對照</button></span>
+  </div>`;
+  out+=`<div class="card" style="padding:0;overflow:hidden">
+    <div style="background:var(--navy);color:#fff;padding:16px 24px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+      <span style="font-size:13px;color:#9fb0c8">評定結果</span>
+      <span style="font-size:30px;font-weight:800;color:#ffd27a">${LVTXT[d.lv]}</span>
+      <span style="font-size:15px;font-weight:700">${d.title}</span>
+      ${d.minR>0?`<span style="font-size:13px;color:#cfd8e6">子級落點 <b style="color:#fff">${RANKS[d.minR]}</b></span>`:''}
+      <span style="font-size:12px;color:#9fb0c8;margin-left:auto">${esc(a.date)}</span>
+    </div>
+    <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;padding:14px 24px 18px">
+      <div>${radarSVG(vals,COMP)}</div>
+      <div style="flex:1;min-width:280px">${d.html}${d.gateTable||''}</div>
+    </div></div>`;
+  out+=`<div class="card" style="padding:16px 20px">
+    <b style="font-size:14px;color:var(--navy)">直覺核對</b>
+    ${personNarrative(p,a)}
+    <div class="bars">${COMP.map(c=>{const r=rank(a.picks[c]);const hgt=Math.max(6,(r+1)/10*100);const isMin=b.minCols.includes(c);
+      return `<div class="barc"><span class="barr">${a.picks[c]==='未達'?'✗':esc(a.picks[c])}</span><div class="barv ${isMin?'min':''}" style="height:${hgt}%"></div><span class="barl">${c}</span></div>`;}).join('')}</div>
+    <p class="hint" style="margin:2px 0 0">橘色＝最低維度（決定落點的那一維）。</p>
+  </div>`;
+  document.getElementById('stage').innerHTML=out;
+}
 function addPerson(){
   const n=document.getElementById('np').value.trim();if(!n)return;
   let p=DB.people.find(x=>x.name===n);
   if(!p){p={id:uid(),name:n};DB.people.push(p);save();}
-  rate(p.id);
+  openP(p.id);
 }
 function delPerson(id){if(!confirm('刪除此成員與評定？'))return;DB.people=DB.people.filter(p=>p.id!==id);DB.assess=DB.assess.filter(a=>a.pid!==id);save();home();}
 

@@ -212,8 +212,8 @@ function personView(pid){
   out+=`<div class="card" style="padding:16px 20px">
     <b style="font-size:14px;color:var(--navy)">直覺核對</b>
     ${personNarrative(p,a)}
-    <div class="bars">${COMP.map(c=>{const r=rank(a.picks[c]);const hgt=Math.max(6,(r+1)/10*100);const isMin=b.minCols.includes(c);
-      return `<div class="barc"><span class="barr">${a.picks[c]==='未達'?'✗':esc(a.picks[c])}</span><div class="barv ${isMin?'min':''}" style="height:${hgt}%"></div><span class="barl">${c}</span></div>`;}).join('')}</div>
+    <div class="bars">${COMP.map(c=>{const r=rank(a.picks[c]);const hgt=Math.max(8,(r+1)/10*84);const isMin=b.minCols.includes(c);
+      return `<div class="barc"><span class="barr">${a.picks[c]==='未達'?'✗':esc(a.picks[c])}</span><div class="barv ${isMin?'min':''}" style="height:${hgt}px"></div><span class="barl">${c}</span></div>`;}).join('')}</div>
     <p class="hint" style="margin:2px 0 0">橘色＝最低維度（決定落點的那一維）。</p>
   </div>`;
   document.getElementById('stage').innerHTML=out;
@@ -378,8 +378,8 @@ function calib(){
         <span style="margin-left:auto"><button class="btn sm" onclick="rate('${p.id}')">改評分</button></span>
       </div>
       ${personNarrative(p,a)}
-      <div class="bars">${COMP.map(c=>{const r=rank(a.picks[c]);const hgt=Math.max(6,(r+1)/10*100);const isMin=b.minCols.includes(c);
-        return `<div class="barc"><span class="barr">${a.picks[c]==='未達'?'✗':esc(a.picks[c])}</span><div class="barv ${isMin?'min':''}" style="height:${hgt}%"></div><span class="barl">${c}</span></div>`;}).join('')}</div>
+      <div class="bars">${COMP.map(c=>{const r=rank(a.picks[c]);const hgt=Math.max(8,(r+1)/10*84);const isMin=b.minCols.includes(c);
+        return `<div class="barc"><span class="barr">${a.picks[c]==='未達'?'✗':esc(a.picks[c])}</span><div class="barv ${isMin?'min':''}" style="height:${hgt}px"></div><span class="barl">${c}</span></div>`;}).join('')}</div>
       <p class="hint" style="margin:2px 0 0">橘色＝最低維度（決定落點的那一維）。</p>
     </div>`;
   });
